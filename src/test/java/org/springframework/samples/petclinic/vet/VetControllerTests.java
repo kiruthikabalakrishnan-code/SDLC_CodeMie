@@ -188,9 +188,8 @@ class VetControllerTests {
 
 	@Test
 	void showVetListPaginationLinksPreserveFilters() throws Exception {
-		given(this.vets.findByLastNameContaining(eq("a b"), any(Pageable.class)))
-			.willReturn(new PageImpl<Vet>(Lists.newArrayList(james(), helen()),
-					org.springframework.data.domain.PageRequest.of(0, 1), 2));
+		given(this.vets.findByLastNameContaining(eq("a b"), any(Pageable.class))).willReturn(new PageImpl<Vet>(
+				Lists.newArrayList(james(), helen()), org.springframework.data.domain.PageRequest.of(0, 1), 2));
 
 		mockMvc.perform(get("/vets.html").param("lastName", "a b"))
 			.andExpect(status().isOk())

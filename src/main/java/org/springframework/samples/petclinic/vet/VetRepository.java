@@ -65,7 +65,8 @@ public interface VetRepository extends Repository<Vet, Integer> {
 	 * @return a page of matching <code>Vet</code>s
 	 */
 	@Transactional(readOnly = true)
-	@Query("select v from Vet v where lower(v.lastName) like lower(concat('%', :lastName, '%'))")
+	@Query("select v from Vet v where lower(v.lastName) like lower(concat('%', :#{escape(#lastName)}, '%')) "
+			+ "escape :#{escapeCharacter()}")
 	Page<Vet> findByLastNameContaining(@Param("lastName") String lastName, Pageable pageable)
 			throws DataAccessException;
 
@@ -78,12 +79,11 @@ public interface VetRepository extends Repository<Vet, Integer> {
 	 */
 	@Transactional(readOnly = true)
 	@Query("select distinct v from Vet v join v.specialties s where lower(s.name) = lower(:specialty)")
-	Page<Vet> findBySpecialtyName(@Param("specialty") String specialty, Pageable pageable)
-			throws DataAccessException;
+	Page<Vet> findBySpecialtyName(@Param("specialty") String specialty, Pageable pageable) throws DataAccessException;
 
 	/**
-	 * Retrieve <code>Vet</code>s whose last name contains the given text and that have the
-	 * given specialty (both ignoring case).
+	 * Retrieve <code>Vet</code>s whose last name contains the given text and that have
+	 * the given specialty (both ignoring case).
 	 * @param lastName the last name substring to look for
 	 * @param specialty the specialty name
 	 * @param pageable paging information
@@ -91,7 +91,8 @@ public interface VetRepository extends Repository<Vet, Integer> {
 	 */
 	@Transactional(readOnly = true)
 	@Query("select distinct v from Vet v join v.specialties s where lower(s.name) = lower(:specialty) "
-			+ "and lower(v.lastName) like lower(concat('%', :lastName, '%'))")
+			+ "and lower(v.lastName) like lower(concat('%', :#{escape(#lastName)}, '%')) "
+			+ "escape :#{escapeCharacter()}")
 	Page<Vet> findByLastNameContainingAndSpecialtyName(@Param("lastName") String lastName,
 			@Param("specialty") String specialty, Pageable pageable) throws DataAccessException;
 

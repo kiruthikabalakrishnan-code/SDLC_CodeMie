@@ -71,8 +71,7 @@ class VetController {
 		return addPaginationModel(page, paginated, lastNameFilter, specialtyFilter, model);
 	}
 
-	private String addPaginationModel(int page, Page<Vet> paginated, String lastName, String specialty,
-			Model model) {
+	private String addPaginationModel(int page, Page<Vet> paginated, String lastName, String specialty, Model model) {
 		List<Vet> listVets = paginated.getContent();
 		model.addAttribute("currentPage", page);
 		model.addAttribute("totalPages", paginated.getTotalPages());

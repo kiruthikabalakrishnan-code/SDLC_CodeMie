@@ -17,7 +17,7 @@
       <select class="form-control" id="specialty" name="specialty">
         <option value="" th:text="#{allSpecialties}">All specialties</option>
         <option th:each="s : ${specialties}" th:value="${s.name}" th:text="${s.name}"
-          th:selected="${#strings.equalsIgnoreCase(s.name, specialty)}">radiology</option>
+          th:selected="${#strings.equalsIgnoreCase(s.name, specialty)}"></option>
       </select>
     </div>
     <button type="submit" class="btn btn-primary" th:text="#{filter}">Filter</button>
