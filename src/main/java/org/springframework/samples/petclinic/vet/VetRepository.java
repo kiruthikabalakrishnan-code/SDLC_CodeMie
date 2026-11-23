@@ -19,7 +19,9 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
+import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Collection;
@@ -54,5 +56,43 @@ public interface VetRepository extends Repository<Vet, Integer> {
 	@Transactional(readOnly = true)
 	@Cacheable("vets")
 	Page<Vet> findAll(Pageable pageable) throws DataAccessException;
+
+	/**
+	 * Retrieve <code>Vet</code>s whose last name contains the given text (ignoring case).
+	 * Not cached, so that filtered results never share a cache entry.
+	 * @param lastName the last name substring to look for
+	 * @param pageable paging information
+	 * @return a page of matching <code>Vet</code>s
+	 */
+	@Transactional(readOnly = true)
+	@Query("select v from Vet v where lower(v.lastName) like lower(concat('%', :lastName, '%'))")
+	Page<Vet> findByLastNameContaining(@Param("lastName") String lastName, Pageable pageable)
+			throws DataAccessException;
+
+	/**
+	 * Retrieve <code>Vet</code>s that have the given specialty (name match ignoring
+	 * case).
+	 * @param specialty the specialty name
+	 * @param pageable paging information
+	 * @return a page of matching <code>Vet</code>s
+	 */
+	@Transactional(readOnly = true)
+	@Query("select distinct v from Vet v join v.specialties s where lower(s.name) = lower(:specialty)")
+	Page<Vet> findBySpecialtyName(@Param("specialty") String specialty, Pageable pageable)
+			throws DataAccessException;
+
+	/**
+	 * Retrieve <code>Vet</code>s whose last name contains the given text and that have the
+	 * given specialty (both ignoring case).
+	 * @param lastName the last name substring to look for
+	 * @param specialty the specialty name
+	 * @param pageable paging information
+	 * @return a page of matching <code>Vet</code>s
+	 */
+	@Transactional(readOnly = true)
+	@Query("select distinct v from Vet v join v.specialties s where lower(s.name) = lower(:specialty) "
+			+ "and lower(v.lastName) like lower(concat('%', :lastName, '%'))")
+	Page<Vet> findByLastNameContainingAndSpecialtyName(@Param("lastName") String lastName,
+			@Param("specialty") String specialty, Pageable pageable) throws DataAccessException;
 
 }

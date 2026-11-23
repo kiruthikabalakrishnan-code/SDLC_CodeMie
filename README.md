@@ -94,6 +94,22 @@ or
 docker compose up postgres
 ```
 
+## Vet list filtering
+
+The vets list page (`/vets.html`) can optionally be filtered with the following query parameters (the filter form on the page uses the same parameters):
+
+| Parameter   | Description                                                            |
+|-------------|------------------------------------------------------------------------|
+| `lastName`  | Case-insensitive substring match on the vet's last name                |
+| `specialty` | Vets that have the given specialty (case-insensitive name match)       |
+| `page`      | Page number (existing parameter); active filters are kept across pages |
+
+Blank values are treated as "no filter", and when both filters are given they are combined with AND. Examples:
+
+* `/vets.html?lastName=dav`
+* `/vets.html?specialty=dentistry`
+* `/vets.html?lastName=dav&specialty=dentistry`
+
 ## Test Applications
 
 At development time we recommend you use the test applications set up as `main()` methods in `PetClinicIntegrationTests` (using the default H2 database and also adding Spring Boot Devtools), `MySqlTestApplication` and `PostgresIntegrationTests`. These are set up so that you can run the apps in your IDE to get fast feedback and also run the same classes as integration tests against the respective database. The MySql integration tests use Testcontainers to start the database in a Docker container, and the Postgres tests use Docker Compose to do the same thing.

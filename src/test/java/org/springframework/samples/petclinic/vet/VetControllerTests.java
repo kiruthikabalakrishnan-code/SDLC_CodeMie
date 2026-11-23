@@ -34,6 +34,9 @@ import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
@@ -52,6 +55,9 @@ class VetControllerTests {
 
 	@MockitoBean
 	private VetRepository vets;
+
+	@MockitoBean
+	private SpecialtyRepository specialties;
 
 	private Vet james() {
 		Vet james = new Vet();
@@ -78,7 +84,14 @@ class VetControllerTests {
 		given(this.vets.findAll()).willReturn(Lists.newArrayList(james(), helen()));
 		given(this.vets.findAll(any(Pageable.class)))
 			.willReturn(new PageImpl<Vet>(Lists.newArrayList(james(), helen())));
+		given(this.specialties.findAllByOrderByNameAsc()).willReturn(Lists.newArrayList(radiology()));
+	}
 
+	private Specialty radiology() {
+		Specialty radiology = new Specialty();
+		radiology.setId(1);
+		radiology.setName("radiology");
+		return radiology;
 	}
 
 	@Test
@@ -98,6 +111,101 @@ class VetControllerTests {
 				.andExpect(status().is3xxRedirection())
 				.andExpect(redirectedUrl("/vets.html?page=1"));
 		}
+	}
+
+	@Test
+	void showVetListWithoutFiltersUsesFindAll() throws Exception {
+		mockMvc.perform(get("/vets.html"))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("lastName", ""))
+			.andExpect(model().attribute("specialty", ""))
+			.andExpect(model().attribute("noResults", false))
+			.andExpect(model().attributeExists("specialties"));
+		verify(this.vets).findAll(any(Pageable.class));
+	}
+
+	@Test
+	void showVetListTreatsBlankFiltersAsNoFilter() throws Exception {
+		mockMvc.perform(get("/vets.html").param("lastName", "   ").param("specialty", ""))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("lastName", ""))
+			.andExpect(model().attribute("specialty", ""));
+		verify(this.vets).findAll(any(Pageable.class));
+		verify(this.vets, never()).findByLastNameContaining(any(), any());
+		verify(this.vets, never()).findBySpecialtyName(any(), any());
+	}
+
+	@Test
+	void showVetListFiltersByLastName() throws Exception {
+		given(this.vets.findByLastNameContaining(eq("dav"), any(Pageable.class)))
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList(james())));
+
+		mockMvc.perform(get("/vets.html").param("lastName", " dav "))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("lastName", "dav"))
+			.andExpect(model().attribute("totalItems", 1L))
+			.andExpect(model().attribute("noResults", false))
+			.andExpect(view().name("vets/vetList"));
+		verify(this.vets).findByLastNameContaining(eq("dav"), any(Pageable.class));
+	}
+
+	@Test
+	void showVetListFiltersBySpecialty() throws Exception {
+		given(this.vets.findBySpecialtyName(eq("radiology"), any(Pageable.class)))
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList(helen())));
+
+		mockMvc.perform(get("/vets.html").param("specialty", "radiology"))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("specialty", "radiology"))
+			.andExpect(model().attribute("totalItems", 1L));
+		verify(this.vets).findBySpecialtyName(eq("radiology"), any(Pageable.class));
+	}
+
+	@Test
+	void showVetListFiltersByLastNameAndSpecialty() throws Exception {
+		given(this.vets.findByLastNameContainingAndSpecialtyName(eq("lea"), eq("radiology"), any(Pageable.class)))
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList(helen())));
+
+		mockMvc.perform(get("/vets.html").param("lastName", "lea").param("specialty", "radiology"))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("lastName", "lea"))
+			.andExpect(model().attribute("specialty", "radiology"))
+			.andExpect(model().attribute("totalItems", 1L));
+		verify(this.vets).findByLastNameContainingAndSpecialtyName(eq("lea"), eq("radiology"), any(Pageable.class));
+	}
+
+	@Test
+	void showVetListWithNoMatchesRendersEmptyState() throws Exception {
+		given(this.vets.findByLastNameContaining(eq("zzz"), any(Pageable.class)))
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList()));
+
+		mockMvc.perform(get("/vets.html").param("lastName", "zzz"))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("noResults", true))
+			.andExpect(view().name("vets/vetList"))
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("noVetsMessage")));
+	}
+
+	@Test
+	void showVetListPaginationLinksPreserveFilters() throws Exception {
+		given(this.vets.findByLastNameContaining(eq("a b"), any(Pageable.class)))
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList(james(), helen()),
+					org.springframework.data.domain.PageRequest.of(0, 1), 2));
+
+		mockMvc.perform(get("/vets.html").param("lastName", "a b"))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("filterQuery", "&lastName=a%20b"))
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("page=2&amp;lastName=a%20b")));
+	}
+
+	@Test
+	void showVetListRedirectPreservesFilters() throws Exception {
+		given(this.vets.findByLastNameContainingAndSpecialtyName(eq("dav"), eq("dentistry"), any(Pageable.class)))
+			.willReturn(new PageImpl<Vet>(Lists.newArrayList()));
+
+		mockMvc.perform(get("/vets.html").param("page", "3").param("lastName", "dav").param("specialty", "dentistry"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/vets.html?page=1&lastName=dav&specialty=dentistry"));
 	}
 
 	@Test
