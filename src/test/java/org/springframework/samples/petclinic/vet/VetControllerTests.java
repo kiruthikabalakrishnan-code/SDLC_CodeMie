@@ -183,7 +183,19 @@ class VetControllerTests {
 			.andExpect(status().isOk())
 			.andExpect(model().attribute("noResults", true))
 			.andExpect(view().name("vets/vetList"))
-			.andExpect(content().string(org.hamcrest.Matchers.containsString("noVetsMessage")));
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("No vets match the current filters.")));
+	}
+
+	@Test
+	void showVetListWithoutFiltersAndNoVetsDoesNotRenderNoMatchesMessage() throws Exception {
+		given(this.vets.findAll(any(Pageable.class))).willReturn(new PageImpl<Vet>(Lists.newArrayList()));
+
+		mockMvc.perform(get("/vets.html"))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("noResults", false))
+			.andExpect(view().name("vets/vetList"))
+			.andExpect(content().string(org.hamcrest.Matchers
+				.not(org.hamcrest.Matchers.containsString("No vets match the current filters."))));
 	}
 
 	@Test

@@ -81,7 +81,8 @@ class VetController {
 		model.addAttribute("specialty", specialty != null ? specialty : "");
 		model.addAttribute("specialties", specialtyRepository.findAllByOrderByNameAsc());
 		model.addAttribute("filterQuery", buildFilterQuery(lastName, specialty));
-		model.addAttribute("noResults", paginated.getTotalElements() == 0);
+		boolean filtersActive = lastName != null || specialty != null;
+		model.addAttribute("noResults", filtersActive && paginated.getTotalElements() == 0);
 		return "vets/vetList";
 	}
 
