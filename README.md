@@ -98,6 +98,35 @@ docker compose up postgres
 
 At development time we recommend you use the test applications set up as `main()` methods in `PetClinicIntegrationTests` (using the default H2 database and also adding Spring Boot Devtools), `MySqlTestApplication` and `PostgresIntegrationTests`. These are set up so that you can run the apps in your IDE to get fast feedback and also run the same classes as integration tests against the respective database. The MySql integration tests use Testcontainers to start the database in a Docker container, and the Postgres tests use Docker Compose to do the same thing.
 
+## Finding owners by last name and/or phone number
+
+The **Find Owners** page (`/owners/find`) has two optional criteria:
+
+* **Last Name** - owners whose last name starts with the entered text (unchanged behaviour).
+* **Telephone** - owners whose stored telephone number equals the entered number (exact match).
+
+If both are filled in, only owners matching **both** are returned. The telephone input is normalized before
+searching by removing every non-digit character, so `(608) 555-1023`, `608-555-1023`, `608 555 1023` and
+`6085551023` all return the same owners. Input containing no digits is treated as "not provided". When nothing
+matches, the usual "has not been found" message is shown next to the field that was searched (the telephone
+field for phone-only searches, otherwise the last name field).
+
+### End-to-end tests (Playwright + TypeScript)
+
+The browser tests live in the isolated `e2e/` folder (own `package.json`); they are **not** part of the Maven build
+or the CI workflow. They need Node.js 18+ and a running application:
+
+```bash
+./mvnw spring-boot:run          # terminal 1: starts the app on http://localhost:8080 (in-memory H2 data)
+
+cd e2e                          # terminal 2
+npm ci
+npx playwright install chromium
+npx playwright test             # set E2E_BASE_URL to target a different host/port
+```
+
+The tests rely on the sample data loaded for the default H2 profile.
+
 ## Compiling the CSS
 
 There is a `petclinic.css` in `src/main/resources/static/resources/css`. It was generated from the `petclinic.scss` source, combined with the [Bootstrap](https://getbootstrap.com/) library. If you make changes to the `scss`, or upgrade Bootstrap, you will need to re-compile the CSS resources using the Maven profile "css", i.e. `./mvnw package -P css`. There is no build profile for Gradle to compile the CSS.

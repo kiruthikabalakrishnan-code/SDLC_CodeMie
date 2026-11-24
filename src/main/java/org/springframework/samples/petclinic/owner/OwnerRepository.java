@@ -45,6 +45,22 @@ public interface OwnerRepository extends JpaRepository<Owner, Integer> {
 	Page<Owner> findByLastNameStartingWith(String lastName, Pageable pageable);
 
 	/**
+	 * Retrieve {@link Owner}s from the data store by telephone number (exact match).
+	 * @param telephone the digits-only telephone number to search for
+	 * @return a page of matching {@link Owner}s (empty if none found)
+	 */
+	Page<Owner> findByTelephone(String telephone, Pageable pageable);
+
+	/**
+	 * Retrieve {@link Owner}s whose last name <i>starts</i> with the given name AND whose
+	 * telephone number matches exactly.
+	 * @param lastName the last name prefix to search for
+	 * @param telephone the digits-only telephone number to search for
+	 * @return a page of matching {@link Owner}s (empty if none found)
+	 */
+	Page<Owner> findByLastNameStartingWithAndTelephone(String lastName, String telephone, Pageable pageable);
+
+	/**
 	 * Retrieve an {@link Owner} from the data store by id.
 	 * <p>
 	 * This method returns an {@link Optional} containing the {@link Owner} if found. If

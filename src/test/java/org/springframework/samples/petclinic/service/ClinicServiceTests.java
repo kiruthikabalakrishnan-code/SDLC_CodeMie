@@ -96,6 +96,32 @@ class ClinicServiceTests {
 	}
 
 	@Test
+	void shouldFindOwnersByTelephone() {
+		Page<Owner> owners = this.owners.findByTelephone("6085551023", pageable);
+		assertThat(owners).hasSize(1);
+		assertThat(owners.getContent().get(0).getLastName()).isEqualTo("Franklin");
+
+		owners = this.owners.findByTelephone("0000000000", pageable);
+		assertThat(owners).isEmpty();
+	}
+
+	@Test
+	void shouldFindOwnersByLastNameAndTelephone() {
+		// both criteria match
+		Page<Owner> owners = this.owners.findByLastNameStartingWithAndTelephone("Davis", "6085551749", pageable);
+		assertThat(owners).hasSize(1);
+		assertThat(owners.getContent().get(0).getFirstName()).isEqualTo("Betty");
+
+		// last name matches (two Davis owners) but telephone belongs to another owner
+		owners = this.owners.findByLastNameStartingWithAndTelephone("Davis", "6085551023", pageable);
+		assertThat(owners).isEmpty();
+
+		// telephone matches but last name does not
+		owners = this.owners.findByLastNameStartingWithAndTelephone("Smith", "6085551749", pageable);
+		assertThat(owners).isEmpty();
+	}
+
+	@Test
 	void shouldFindSingleOwnerWithPet() {
 		Optional<Owner> optionalOwner = this.owners.findById(1);
 		assertThat(optionalOwner).isPresent();

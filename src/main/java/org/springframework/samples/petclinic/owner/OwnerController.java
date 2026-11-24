@@ -103,19 +103,30 @@ class OwnerController {
 			lastName = lastName.strip();
 		}
 
-		// find owners by last name
-		Page<Owner> ownersResults = findPaginatedForOwnersLastName(page, lastName);
+		// optional telephone criterion: keep digits only, blank means "not provided"
+		String telephone = PhoneNumbers.normalize(owner.getTelephone());
+
+		// find owners by last name and/or telephone
+		Page<Owner> ownersResults = findPaginatedForOwners(page, lastName, telephone);
 		if (page < 1 || page > Math.max(ownersResults.getTotalPages(), 1)) {
 			redirectAttributes.addAttribute("page", 1);
 			if (!lastName.isEmpty()) {
 				redirectAttributes.addAttribute("lastName", lastName);
+			}
+			if (!telephone.isEmpty()) {
+				redirectAttributes.addAttribute("telephone", telephone);
 			}
 			return "redirect:/owners";
 		}
 
 		if (ownersResults.isEmpty()) {
 			// no owners found
-			result.rejectValue("lastName", "notFound", "not found");
+			if (lastName.isEmpty() && !telephone.isEmpty()) {
+				result.rejectValue("telephone", "notFound", "not found");
+			}
+			else {
+				result.rejectValue("lastName", "notFound", "not found");
+			}
 			return "owners/findOwners";
 		}
 
@@ -138,11 +149,17 @@ class OwnerController {
 		return "owners/ownersList";
 	}
 
-	private Page<Owner> findPaginatedForOwnersLastName(int page, String lastname) {
+	private Page<Owner> findPaginatedForOwners(int page, String lastName, String telephone) {
 		int pageSize = 5;
 		int validatedPage = Math.max(page, 1);
 		Pageable pageable = PageRequest.of(validatedPage - 1, pageSize);
-		return owners.findByLastNameStartingWith(lastname, pageable);
+		if (telephone.isEmpty()) {
+			return owners.findByLastNameStartingWith(lastName, pageable);
+		}
+		if (lastName.isEmpty()) {
+			return owners.findByTelephone(telephone, pageable);
+		}
+		return owners.findByLastNameStartingWithAndTelephone(lastName, telephone, pageable);
 	}
 
 	@GetMapping("/owners/{ownerId}/edit")

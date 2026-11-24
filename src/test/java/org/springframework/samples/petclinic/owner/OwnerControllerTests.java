@@ -235,6 +235,102 @@ class OwnerControllerTests {
 	}
 
 	@Test
+	void initFindFormShowsTelephoneField() throws Exception {
+		mockMvc.perform(get("/owners/find"))
+			.andExpect(status().isOk())
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("id=\"telephone\"")))
+			.andExpect(content().string(org.hamcrest.Matchers.containsString("name=\"telephone\"")));
+	}
+
+	@Test
+	void processFindFormByTelephoneOnly() throws Exception {
+		Page<Owner> tasks = new PageImpl<>(List.of(george()));
+		when(this.owners.findByTelephone(eq("6085551023"), any(Pageable.class))).thenReturn(tasks);
+		mockMvc.perform(get("/owners?page=1").param("telephone", "6085551023"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(view().name("redirect:/owners/" + TEST_OWNER_ID));
+
+		verify(this.owners).findByTelephone(eq("6085551023"), any(Pageable.class));
+	}
+
+	@Test
+	void processFindFormNormalizesFormattedTelephone() throws Exception {
+		Page<Owner> tasks = new PageImpl<>(List.of(george()));
+		when(this.owners.findByTelephone(eq("6085551023"), any(Pageable.class))).thenReturn(tasks);
+
+		for (String telephone : List.of("(608) 555-1023", "608-555-1023", "608 555 1023", " 608.555.1023 ")) {
+			mockMvc.perform(get("/owners?page=1").param("telephone", telephone))
+				.andExpect(status().is3xxRedirection())
+				.andExpect(view().name("redirect:/owners/" + TEST_OWNER_ID));
+		}
+
+		verify(this.owners, times(4)).findByTelephone(eq("6085551023"), any(Pageable.class));
+	}
+
+	@Test
+	void processFindFormByTelephoneMultipleOwnersShowsList() throws Exception {
+		Page<Owner> tasks = new PageImpl<>(List.of(george(), new Owner()));
+		when(this.owners.findByTelephone(eq("6085551023"), any(Pageable.class))).thenReturn(tasks);
+		mockMvc.perform(get("/owners?page=1").param("telephone", "6085551023"))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("listOwners", hasSize(2)))
+			.andExpect(view().name("owners/ownersList"));
+	}
+
+	@Test
+	void processFindFormByTelephoneNoOwnersFound() throws Exception {
+		Page<Owner> tasks = new PageImpl<>(List.of());
+		when(this.owners.findByTelephone(eq("0000000000"), any(Pageable.class))).thenReturn(tasks);
+		mockMvc.perform(get("/owners?page=1").param("telephone", "(000) 000-0000"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeHasFieldErrors("owner", "telephone"))
+			.andExpect(model().attributeHasFieldErrorCode("owner", "telephone", "notFound"))
+			.andExpect(view().name("owners/findOwners"));
+	}
+
+	@Test
+	void processFindFormByLastNameAndTelephoneAppliesBothCriteria() throws Exception {
+		Page<Owner> tasks = new PageImpl<>(List.of(george()));
+		when(this.owners.findByLastNameStartingWithAndTelephone(eq("Franklin"), eq("6085551023"), any(Pageable.class)))
+			.thenReturn(tasks);
+		mockMvc.perform(get("/owners?page=1").param("lastName", "Franklin").param("telephone", "(608) 555-1023"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(view().name("redirect:/owners/" + TEST_OWNER_ID));
+
+		verify(this.owners).findByLastNameStartingWithAndTelephone(eq("Franklin"), eq("6085551023"),
+				any(Pageable.class));
+		verify(this.owners, times(0)).findByTelephone(anyString(), any(Pageable.class));
+	}
+
+	@Test
+	void processFindFormByLastNameAndTelephoneNoMatch() throws Exception {
+		when(this.owners.findByLastNameStartingWithAndTelephone(eq("Franklin"), eq("0000000000"), any(Pageable.class)))
+			.thenReturn(new PageImpl<>(List.of()));
+		mockMvc.perform(get("/owners?page=1").param("lastName", "Franklin").param("telephone", "0000000000"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeHasFieldErrorCode("owner", "lastName", "notFound"))
+			.andExpect(view().name("owners/findOwners"));
+	}
+
+	@Test
+	void processFindFormWithPunctuationOnlyTelephoneIsTreatedAsNotProvided() throws Exception {
+		mockMvc.perform(get("/owners?page=1").param("lastName", "Franklin").param("telephone", "() - "))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(view().name("redirect:/owners/" + TEST_OWNER_ID));
+
+		verify(this.owners).findByLastNameStartingWith(eq("Franklin"), any(Pageable.class));
+	}
+
+	@Test
+	void processFindFormRedirectsOutOfBoundsTelephoneSearchKeepingNormalizedTelephone() throws Exception {
+		when(this.owners.findByTelephone(eq("6085551023"), any(Pageable.class)))
+			.thenReturn(new PageImpl<>(List.of(george())));
+		mockMvc.perform(get("/owners").param("page", "2").param("telephone", "(608) 555-1023"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/owners?page=1&telephone=6085551023"));
+	}
+
+	@Test
 	void initUpdateOwnerForm() throws Exception {
 		mockMvc.perform(get("/owners/{ownerId}/edit", TEST_OWNER_ID))
 			.andExpect(status().isOk())
