@@ -114,7 +114,7 @@ field for phone-only searches, otherwise the last name field).
 ### End-to-end tests (Playwright + TypeScript)
 
 The browser tests live in the isolated `e2e/` folder (own `package.json`); they are **not** part of the Maven build
-or the CI workflow. They need Node.js 18+ and a running application:
+or the CI workflow. They need Node.js 20+ and a running application:
 
 ```bash
 ./mvnw spring-boot:run          # terminal 1: starts the app on http://localhost:8080 (in-memory H2 data)
