@@ -40,6 +40,46 @@ You can then access the Petclinic at <http://localhost:8080/>.
 You can, of course, run Petclinic in your favorite IDE.
 See below for more details.
 
+## Vets JSON API
+
+`GET /vets` returns the veterinarians as JSON. Pagination is optional and opt-in via query parameters.
+
+| Parameter | Description |
+| --------- | ----------- |
+| `page`    | 0-based page index. Providing `page` enables pagination. |
+| `size`    | Optional page size, an integer between 1 and 100 (default `10`). Ignored when `page` is not provided. |
+
+Without `page`, the full list is returned exactly as before:
+
+```bash
+curl http://localhost:8080/vets
+```
+
+```json
+{ "vetList": [ { "id": 1, "firstName": "James", "lastName": "Carter", "specialties": [], "nrOfSpecialties": 0, "new": false } ] }
+```
+
+With `page`, a paginated envelope with metadata is returned. A page beyond the last page returns `200` with an empty `items` list and the correct totals:
+
+```bash
+curl "http://localhost:8080/vets?page=0&size=10"
+```
+
+```json
+{
+  "items": [ { "id": 1, "firstName": "James", "lastName": "Carter", "specialties": [], "nrOfSpecialties": 0, "new": false } ],
+  "metadata": { "page": 0, "size": 10, "totalItems": 6, "totalPages": 1 }
+}
+```
+
+Invalid pagination parameters return `400` with a JSON body containing an `error` message:
+
+| Request | Error message |
+| ------- | ------------- |
+| `/vets?page=-1&size=10` | `Invalid 'page' parameter: must be a non-negative integer` |
+| `/vets?page=0&size=0` | `Invalid 'size' parameter: must be an integer between 1 and 100` |
+| `/vets?page=abc&size=10` | `Invalid pagination parameters: 'page' and 'size' must be numeric (integer) values` |
+
 ## Building a Container
 
 There is no `Dockerfile` in this project. You can build a container image (if you have a docker daemon) using the Spring Boot build plugin:

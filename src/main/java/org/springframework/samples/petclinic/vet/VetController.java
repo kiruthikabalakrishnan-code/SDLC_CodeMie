@@ -16,10 +16,12 @@
 package org.springframework.samples.petclinic.vet;
 
 import java.util.List;
+import java.util.Map;
 
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -35,6 +37,10 @@ import org.springframework.web.servlet.mvc.support.RedirectAttributes;
  */
 @Controller
 class VetController {
+
+	private static final int DEFAULT_API_PAGE_SIZE = 10;
+
+	private static final int MAX_API_PAGE_SIZE = 100;
 
 	private final VetRepository vetRepository;
 
@@ -69,13 +75,47 @@ class VetController {
 		return vetRepository.findAll(pageable);
 	}
 
+	/**
+	 * JSON endpoint listing vets. Without the {@code page} parameter the full list is
+	 * returned as a {@link Vets} wrapper (legacy behavior). With {@code page} (0-based)
+	 * and an optional {@code size}, a {@link PaginatedVetsResponse} is returned. A
+	 * {@code size} without {@code page} is ignored.
+	 */
 	@GetMapping({ "/vets" })
-	public @ResponseBody Vets showResourcesVetList() {
-		// Here we are returning an object of type 'Vets' rather than a collection of Vet
-		// objects so it is simpler for JSon/Object mapping
-		Vets vets = new Vets();
-		vets.getVetList().addAll(this.vetRepository.findAll());
-		return vets;
+	public @ResponseBody ResponseEntity<Object> showResourcesVetList(@RequestParam(required = false) String page,
+			@RequestParam(required = false) String size) {
+		if (page == null) {
+			// Here we are returning an object of type 'Vets' rather than a collection of
+			// Vet objects so it is simpler for JSon/Object mapping
+			Vets vets = new Vets();
+			vets.getVetList().addAll(this.vetRepository.findAll());
+			return ResponseEntity.ok(vets);
+		}
+
+		int pageNumber;
+		int pageSize;
+		try {
+			pageNumber = Integer.parseInt(page.trim());
+			pageSize = (size == null) ? DEFAULT_API_PAGE_SIZE : Integer.parseInt(size.trim());
+		}
+		catch (NumberFormatException ex) {
+			return badRequest("Invalid pagination parameters: 'page' and 'size' must be numeric (integer) values");
+		}
+		if (pageNumber < 0) {
+			return badRequest("Invalid 'page' parameter: must be a non-negative integer");
+		}
+		if (pageSize < 1 || pageSize > MAX_API_PAGE_SIZE) {
+			return badRequest("Invalid 'size' parameter: must be an integer between 1 and " + MAX_API_PAGE_SIZE);
+		}
+
+		Page<Vet> paginated = this.vetRepository.findAll(PageRequest.of(pageNumber, pageSize));
+		PaginationMetadata metadata = new PaginationMetadata(pageNumber, pageSize, paginated.getTotalElements(),
+				paginated.getTotalPages());
+		return ResponseEntity.ok(new PaginatedVetsResponse(paginated.getContent(), metadata));
+	}
+
+	private static ResponseEntity<Object> badRequest(String message) {
+		return ResponseEntity.badRequest().body(Map.of("error", message));
 	}
 
 }
