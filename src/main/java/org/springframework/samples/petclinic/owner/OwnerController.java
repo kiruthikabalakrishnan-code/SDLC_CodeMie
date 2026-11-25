@@ -141,7 +141,7 @@ class OwnerController {
 			result.rejectValue("telephone", "required", "is required");
 			return "owners/findOwners";
 		}
-		if (!telephone.chars().allMatch(Character::isDigit)) {
+		if (!telephone.chars().allMatch(c -> c >= '0' && c <= '9')) {
 			result.rejectValue("telephone", "nonNumeric", "must be all numeric");
 			return "owners/findOwners";
 		}

@@ -286,6 +286,15 @@ class OwnerControllerTests {
 	}
 
 	@Test
+	void processFindFormByTelephoneNonAsciiDigitsAreRejected() throws Exception {
+		mockMvc.perform(get("/owners").param("searchType", "telephone").param("telephone", "٦٠٨"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeHasFieldErrorCode("owner", "telephone", "nonNumeric"))
+			.andExpect(view().name("owners/findOwners"));
+		verify(this.owners, never()).findByTelephoneStartingWith(anyString(), any(Pageable.class));
+	}
+
+	@Test
 	void processFindFormByTelephoneRedirectsOutOfBoundsPageToFirstPage() throws Exception {
 		when(this.owners.findByTelephoneStartingWith(eq("608"), any(Pageable.class)))
 			.thenReturn(new PageImpl<>(List.of(george())));
