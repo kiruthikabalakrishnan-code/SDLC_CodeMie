@@ -30,6 +30,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.DisabledInNativeImage;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -106,6 +107,7 @@ class VisitCancellationControllerTests {
 	}
 
 	@Test
+	@DisplayName("AC1: cancelExistingVisitRemovesItSavesOwnerAndRedirectsWithSuccessMessage")
 	void cancelExistingVisitRemovesItSavesOwnerAndRedirectsWithSuccessMessage() throws Exception {
 		mockMvc.perform(post(DELETE_URL, OWNER_ID, PET_ID, VISIT_ID))
 			.andExpect(status().is3xxRedirection())
@@ -118,6 +120,7 @@ class VisitCancellationControllerTests {
 	}
 
 	@Test
+	@DisplayName("AC1: cancelExistingVisitLeavesOtherVisitsOfOtherPetsUntouched")
 	void cancelExistingVisitLeavesOtherVisitsOfOtherPetsUntouched() throws Exception {
 		Visit second = visit(71, "vaccination");
 		pet.addVisit(second);
@@ -129,6 +132,7 @@ class VisitCancellationControllerTests {
 	}
 
 	@Test
+	@DisplayName("AC3: cancelVisitOfUnknownOwnerDeletesNothingAndRedirectsWithError")
 	void cancelVisitOfUnknownOwnerDeletesNothingAndRedirectsWithError() throws Exception {
 		mockMvc.perform(post(DELETE_URL, 9999, PET_ID, VISIT_ID))
 			.andExpect(status().is3xxRedirection())
@@ -141,6 +145,7 @@ class VisitCancellationControllerTests {
 	}
 
 	@Test
+	@DisplayName("AC3: cancelVisitOfUnknownPetDeletesNothingAndRedirectsWithError")
 	void cancelVisitOfUnknownPetDeletesNothingAndRedirectsWithError() throws Exception {
 		mockMvc.perform(post(DELETE_URL, OWNER_ID, 9999, VISIT_ID))
 			.andExpect(status().is3xxRedirection())
@@ -153,6 +158,7 @@ class VisitCancellationControllerTests {
 	}
 
 	@Test
+	@DisplayName("AC3: cancelUnknownVisitDeletesNothingAndRedirectsWithError")
 	void cancelUnknownVisitDeletesNothingAndRedirectsWithError() throws Exception {
 		mockMvc.perform(post(DELETE_URL, OWNER_ID, PET_ID, 9999))
 			.andExpect(status().is3xxRedirection())
@@ -165,6 +171,30 @@ class VisitCancellationControllerTests {
 	}
 
 	@Test
+	@DisplayName("AC4: cancelVisitThatBelongsToAnotherOwnersPetDeletesNothing")
+	void cancelVisitThatBelongsToAnotherOwnersPetDeletesNothing() throws Exception {
+		// a real visit (id 10) of pet 1, which belongs to owner 1 and not to owner 6
+		Owner otherOwner = new Owner();
+		otherOwner.setId(1);
+		Pet leo = pet(1, "Leo");
+		Visit otherOwnerVisit = visit(10, "rabies shot");
+		leo.addVisit(otherOwnerVisit);
+		otherOwner.getPets().add(leo);
+		given(this.owners.findById(1)).willReturn(Optional.of(otherOwner));
+
+		mockMvc.perform(post(DELETE_URL, OWNER_ID, PET_ID, 10))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/owners/" + OWNER_ID))
+			.andExpect(flash().attribute("error", "Visit with id 10 not found for pet with id 7."))
+			.andExpect(flash().attributeCount(1));
+
+		verify(this.owners, never()).save(any());
+		assertThat(leo.getVisits()).containsExactly(otherOwnerVisit);
+		assertThat(pet.getVisits()).containsExactly(visit);
+	}
+
+	@Test
+	@DisplayName("AC4: cancelVisitThroughPetThatDoesNotOwnItDeletesNothing")
 	void cancelVisitThroughPetThatDoesNotOwnItDeletesNothing() throws Exception {
 		mockMvc.perform(post(DELETE_URL, OWNER_ID, PET_ID, OTHER_PET_VISIT_ID))
 			.andExpect(status().is3xxRedirection())
@@ -178,6 +208,7 @@ class VisitCancellationControllerTests {
 	}
 
 	@Test
+	@DisplayName("AC4: cancelVisitThroughPetOfAnotherOwnerDeletesNothing")
 	void cancelVisitThroughPetOfAnotherOwnerDeletesNothing() throws Exception {
 		// pet 1 exists in the database but belongs to owner 1, not to owner 6
 		mockMvc.perform(post(DELETE_URL, OWNER_ID, 1, VISIT_ID))
@@ -190,6 +221,7 @@ class VisitCancellationControllerTests {
 	}
 
 	@Test
+	@DisplayName("AC4: cancelVisitThroughOwnerThatDoesNotOwnThePetDeletesNothing")
 	void cancelVisitThroughOwnerThatDoesNotOwnThePetDeletesNothing() throws Exception {
 		Owner other = new Owner();
 		other.setId(1);

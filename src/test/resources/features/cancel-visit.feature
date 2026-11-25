@@ -27,7 +27,7 @@ Feature: Cancel a booked visit from the owner details page
 
   # ---- Backend (VisitCancellationControllerTests, VisitCancellationIntegrationTests) ----
 
-  @backend @success
+  @backend @success @AC1
   Scenario: Cancelling an existing visit deletes it and redirects with a success message
     When I POST to "/owners/6/pets/7/visits/{visitId}/delete"
     Then the response is a redirect to "/owners/6"
@@ -35,7 +35,7 @@ Feature: Cancel a booked visit from the owner details page
     And there is no flash error
     And the visit is removed from the pet
 
-  @backend @orphan-removal
+  @backend @orphan-removal @AC1
   Scenario: Cancelling a visit physically deletes its database row
     Given the visits table contains a row for the visit
     When I POST to "/owners/6/pets/7/visits/{visitId}/delete"
@@ -43,7 +43,7 @@ Feature: Cancel a booked visit from the owner details page
     And the other visits of the pet are still present
     And the visits of other pets are unchanged
 
-  @backend @failure
+  @backend @failure @AC3
   Scenario: Cancelling a visit of an unknown owner deletes nothing
     When I POST to "/owners/9999/pets/7/visits/{visitId}/delete"
     Then the response is a redirect to "/owners/9999"
@@ -51,7 +51,7 @@ Feature: Cancel a booked visit from the owner details page
     And no visit is deleted
     And the response status is not 500
 
-  @backend @failure
+  @backend @failure @AC3
   Scenario: Cancelling a visit of an unknown pet deletes nothing
     When I POST to "/owners/6/pets/9999/visits/{visitId}/delete"
     Then the response is a redirect to "/owners/6"
@@ -59,7 +59,7 @@ Feature: Cancel a booked visit from the owner details page
     And no visit is deleted
     And the response status is not 500
 
-  @backend @failure
+  @backend @failure @AC3
   Scenario: Cancelling an unknown visit deletes nothing
     When I POST to "/owners/6/pets/7/visits/9999/delete"
     Then the response is a redirect to "/owners/6"
@@ -67,7 +67,16 @@ Feature: Cancel a booked visit from the owner details page
     And no visit is deleted
     And the response status is not 500
 
-  @backend @failure @mismatch
+  @backend @failure @mismatch @AC4
+  Scenario: Cancelling a visit that belongs to another owner's pet deletes nothing
+    Given pet 1 "Leo" of owner 1 has a booked visit that does not belong to owner 6
+    When I POST to "/owners/6/pets/7/visits/{otherOwnerVisitId}/delete"
+    Then the response is a redirect to "/owners/6"
+    And the flash error is "Visit with id {otherOwnerVisitId} not found for pet with id 7."
+    And the visit of pet 1 is still present
+    And the response status is not 500
+
+  @backend @failure @mismatch @AC4
   Scenario: Cancelling a visit through a pet that does not own it deletes nothing
     Given pet 8 "Max" of owner 6 has a visit that does not belong to pet 7
     When I POST to "/owners/6/pets/7/visits/{otherPetVisitId}/delete"
@@ -75,7 +84,7 @@ Feature: Cancel a booked visit from the owner details page
     And the flash error is "Visit with id {otherPetVisitId} not found for pet with id 7."
     And the visit of pet 8 is still present
 
-  @backend @failure @mismatch
+  @backend @failure @mismatch @AC4
   Scenario: Cancelling a visit through a pet that belongs to another owner deletes nothing
     Given pet 1 "Leo" belongs to owner 1 and not to owner 6
     When I POST to "/owners/6/pets/1/visits/{visitId}/delete"
@@ -83,7 +92,7 @@ Feature: Cancel a booked visit from the owner details page
     And the flash error is "Pet with id 1 not found for owner with id 6."
     And no visit is deleted
 
-  @backend @failure @mismatch
+  @backend @failure @mismatch @AC4
   Scenario: Cancelling a visit through an owner that does not own the pet deletes nothing
     When I POST to "/owners/1/pets/7/visits/{visitId}/delete"
     Then the response is a redirect to "/owners/1"

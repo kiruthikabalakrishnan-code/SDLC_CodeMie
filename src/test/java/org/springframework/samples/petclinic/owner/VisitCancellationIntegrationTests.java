@@ -26,6 +26,7 @@ import java.util.List;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -71,8 +72,8 @@ class VisitCancellationIntegrationTests {
 
 	@BeforeEach
 	void bookVisits() {
-		visitId = book(PET_ID, MARKER + "own");
-		otherPetVisitId = book(OTHER_PET_ID, MARKER + "other-pet");
+		visitId = book(OWNER_ID, PET_ID, MARKER + "own");
+		otherPetVisitId = book(OWNER_ID, OTHER_PET_ID, MARKER + "other-pet");
 	}
 
 	@AfterEach
@@ -80,8 +81,8 @@ class VisitCancellationIntegrationTests {
 		jdbc.update("DELETE FROM visits WHERE description LIKE ?", MARKER + "%");
 	}
 
-	private int book(int petId, String description) {
-		Owner owner = owners.findById(OWNER_ID).orElseThrow();
+	private int book(int ownerId, int petId, String description) {
+		Owner owner = owners.findById(ownerId).orElseThrow();
 		Visit visit = new Visit();
 		visit.setDescription(description);
 		owner.getPet(petId).addVisit(visit);
@@ -98,6 +99,7 @@ class VisitCancellationIntegrationTests {
 	}
 
 	@Test
+	@DisplayName("AC1: cancelVisitDeletesTheRowThroughOrphanRemoval")
 	void cancelVisitDeletesTheRowThroughOrphanRemoval() throws Exception {
 		assertThat(rowExists(visitId)).isTrue();
 		List<Integer> before = allVisitIds();
@@ -117,6 +119,7 @@ class VisitCancellationIntegrationTests {
 	}
 
 	@Test
+	@DisplayName("AC3: cancelVisitTwiceFailsGracefullyTheSecondTime")
 	void cancelVisitTwiceFailsGracefullyTheSecondTime() throws Exception {
 		mockMvc.perform(post(DELETE_URL, OWNER_ID, PET_ID, visitId)).andExpect(status().is3xxRedirection());
 
@@ -129,6 +132,7 @@ class VisitCancellationIntegrationTests {
 	}
 
 	@Test
+	@DisplayName("AC3: cancelVisitOfUnknownOwnerDeletesNothing")
 	void cancelVisitOfUnknownOwnerDeletesNothing() throws Exception {
 		List<Integer> before = allVisitIds();
 
@@ -141,6 +145,7 @@ class VisitCancellationIntegrationTests {
 	}
 
 	@Test
+	@DisplayName("AC3: cancelVisitOfUnknownPetDeletesNothing")
 	void cancelVisitOfUnknownPetDeletesNothing() throws Exception {
 		List<Integer> before = allVisitIds();
 
@@ -153,6 +158,7 @@ class VisitCancellationIntegrationTests {
 	}
 
 	@Test
+	@DisplayName("AC3: cancelUnknownVisitDeletesNothing")
 	void cancelUnknownVisitDeletesNothing() throws Exception {
 		List<Integer> before = allVisitIds();
 
@@ -165,6 +171,25 @@ class VisitCancellationIntegrationTests {
 	}
 
 	@Test
+	@DisplayName("AC4: cancelVisitThatBelongsToAnotherOwnersPetDeletesNothing")
+	void cancelVisitThatBelongsToAnotherOwnersPetDeletesNothing() throws Exception {
+		// the seed data has no visits for pets 1 or 3, so book a real one for pet 1
+		// (owner 1)
+		int otherOwnerVisitId = book(1, 1, MARKER + "other-owner");
+		List<Integer> before = allVisitIds();
+
+		mockMvc.perform(post(DELETE_URL, OWNER_ID, PET_ID, otherOwnerVisitId))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/owners/" + OWNER_ID))
+			.andExpect(
+					flash().attribute("error", "Visit with id " + otherOwnerVisitId + " not found for pet with id 7."));
+
+		assertThat(rowExists(otherOwnerVisitId)).isTrue();
+		assertThat(allVisitIds()).isEqualTo(before);
+	}
+
+	@Test
+	@DisplayName("AC4: cancelVisitThroughPetThatDoesNotOwnItDeletesNothing")
 	void cancelVisitThroughPetThatDoesNotOwnItDeletesNothing() throws Exception {
 		List<Integer> before = allVisitIds();
 
@@ -179,6 +204,7 @@ class VisitCancellationIntegrationTests {
 	}
 
 	@Test
+	@DisplayName("AC4: cancelVisitThroughPetOfAnotherOwnerDeletesNothing")
 	void cancelVisitThroughPetOfAnotherOwnerDeletesNothing() throws Exception {
 		List<Integer> before = allVisitIds();
 
@@ -191,6 +217,7 @@ class VisitCancellationIntegrationTests {
 	}
 
 	@Test
+	@DisplayName("AC4: cancelVisitThroughOwnerThatDoesNotOwnThePetDeletesNothing")
 	void cancelVisitThroughOwnerThatDoesNotOwnThePetDeletesNothing() throws Exception {
 		List<Integer> before = allVisitIds();
 
