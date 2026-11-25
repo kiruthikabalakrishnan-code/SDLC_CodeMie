@@ -1,0 +1,16 @@
+{
+  "name": "petclinic-e2e",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Playwright UI tests for Spring PetClinic (EPMCDMETST-73769 owner telephone search)",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "install:browsers": "playwright install chromium"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.49.0",
+    "@types/node": "^22.0.0",
+    "typescript": "^5.6.0"
+  }
+}
