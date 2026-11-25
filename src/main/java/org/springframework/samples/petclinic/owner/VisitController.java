@@ -16,7 +16,6 @@
 package org.springframework.samples.petclinic.owner;
 
 import java.time.LocalDate;
-import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 
@@ -109,39 +108,6 @@ class VisitController {
 		owner.addVisit(petId, visit);
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "Your visit has been booked");
-		return "redirect:/owners/{ownerId}";
-	}
-
-	@PostMapping("/owners/{ownerId}/pets/{petId}/visits/{visitId}/delete")
-	public String cancelVisit(@PathVariable int ownerId, @PathVariable int petId, @PathVariable int visitId,
-			RedirectAttributes redirectAttributes) {
-		Optional<Owner> optionalOwner = owners.findById(ownerId);
-		if (optionalOwner.isEmpty()) {
-			redirectAttributes.addFlashAttribute("error", "Owner not found with id: " + ownerId + ".");
-			return "redirect:/owners/{ownerId}";
-		}
-
-		Owner owner = optionalOwner.get();
-		Pet pet = owner.getPet(petId);
-		if (pet == null) {
-			redirectAttributes.addFlashAttribute("error",
-					"Pet with id " + petId + " not found for owner with id " + ownerId + ".");
-			return "redirect:/owners/{ownerId}";
-		}
-
-		Iterator<Visit> iterator = pet.getVisits().iterator();
-		while (iterator.hasNext()) {
-			Visit visit = iterator.next();
-			if (visit.getId() != null && visit.getId() == visitId) {
-				iterator.remove();
-				this.owners.save(owner);
-				redirectAttributes.addFlashAttribute("message", "Visit cancelled successfully.");
-				return "redirect:/owners/{ownerId}";
-			}
-		}
-
-		redirectAttributes.addFlashAttribute("error",
-				"Visit with id " + visitId + " not found for pet with id " + petId + ".");
 		return "redirect:/owners/{ownerId}";
 	}
 
