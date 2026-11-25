@@ -8,13 +8,40 @@
 
   <form th:object="${owner}" th:action="@{/owners}" method="get" class="form-horizontal" id="search-owner-form">
     <div class="form-group">
+      <div class="col-sm-offset-2 col-sm-10">
+        <label class="radio-inline">
+          <input type="radio" name="searchType" value="lastName" id="searchByLastName"
+            th:checked="${param.searchType == null or param.searchType[0] != 'telephone'}" />
+          <span th:text="#{lastName}">Last Name</span>
+        </label>
+        <label class="radio-inline">
+          <input type="radio" name="searchType" value="telephone" id="searchByTelephone"
+            th:checked="${param.searchType != null and param.searchType[0] == 'telephone'}" />
+          <span th:text="#{telephone}">Telephone</span>
+        </label>
+      </div>
+    </div>
+    <div class="form-group">
       <div class="control-group" id="lastNameGroup">
         <label class="col-sm-2 control-label" th:text="#{lastName}">Last name </label>
         <div class="col-sm-10">
           <input class="form-control" th:field="*{lastName}" size="30" maxlength="80" />
           <span class="help-inline">
-            <div th:if="${#fields.hasAnyErrors()}">
-              <p th:each="err : ${#fields.allErrors()}" th:text="${err}">Error</p>
+            <div th:if="${#fields.hasErrors('lastName')}">
+              <p th:each="err : ${#fields.errors('lastName')}" th:text="${err}">Error</p>
+            </div>
+          </span>
+        </div>
+      </div>
+    </div>
+    <div class="form-group">
+      <div class="control-group" id="telephoneGroup">
+        <label class="col-sm-2 control-label" th:text="#{telephone}">Telephone</label>
+        <div class="col-sm-10">
+          <input class="form-control" th:field="*{telephone}" size="10" maxlength="10" />
+          <span class="help-inline">
+            <div th:if="${#fields.hasErrors('telephone')}">
+              <p th:each="err : ${#fields.errors('telephone')}" th:text="${err}">Error</p>
             </div>
           </span>
         </div>

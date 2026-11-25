@@ -44,6 +44,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -232,6 +233,64 @@ class OwnerControllerTests {
 			.andExpect(model().attributeHasFieldErrorCode("owner", "lastName", "notFound"))
 			.andExpect(view().name("owners/findOwners"));
 
+	}
+
+	@Test
+	void processFindFormByTelephoneSingleMatchRedirects() throws Exception {
+		when(this.owners.findByTelephoneStartingWith(eq("6085551023"), any(Pageable.class)))
+			.thenReturn(new PageImpl<>(List.of(george())));
+		mockMvc.perform(get("/owners").param("searchType", "telephone").param("telephone", "6085551023"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(view().name("redirect:/owners/" + TEST_OWNER_ID));
+	}
+
+	@Test
+	void processFindFormByTelephonePrefixShowsList() throws Exception {
+		when(this.owners.findByTelephoneStartingWith(eq("608"), any(Pageable.class)))
+			.thenReturn(new PageImpl<>(List.of(george(), new Owner())));
+		mockMvc.perform(get("/owners").param("searchType", "telephone").param("telephone", " 608 "))
+			.andExpect(status().isOk())
+			.andExpect(model().attribute("searchParams", "&searchType=telephone&telephone=608"))
+			.andExpect(view().name("owners/ownersList"));
+	}
+
+	@Test
+	void processFindFormByTelephoneNoMatch() throws Exception {
+		when(this.owners.findByTelephoneStartingWith(eq("999"), any(Pageable.class)))
+			.thenReturn(new PageImpl<>(List.of()));
+		mockMvc.perform(get("/owners").param("searchType", "telephone").param("telephone", "999"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeHasFieldErrorCode("owner", "telephone", "notFound"))
+			.andExpect(view().name("owners/findOwners"));
+	}
+
+	@Test
+	void processFindFormByTelephoneBlankIsRejected() throws Exception {
+		for (String telephone : List.of("", "   ")) {
+			mockMvc.perform(get("/owners").param("searchType", "telephone").param("telephone", telephone))
+				.andExpect(status().isOk())
+				.andExpect(model().attributeHasFieldErrorCode("owner", "telephone", "required"))
+				.andExpect(view().name("owners/findOwners"));
+		}
+		verify(this.owners, never()).findByTelephoneStartingWith(anyString(), any(Pageable.class));
+	}
+
+	@Test
+	void processFindFormByTelephoneNonNumericIsRejected() throws Exception {
+		mockMvc.perform(get("/owners").param("searchType", "telephone").param("telephone", "60855abc"))
+			.andExpect(status().isOk())
+			.andExpect(model().attributeHasFieldErrorCode("owner", "telephone", "nonNumeric"))
+			.andExpect(view().name("owners/findOwners"));
+		verify(this.owners, never()).findByTelephoneStartingWith(anyString(), any(Pageable.class));
+	}
+
+	@Test
+	void processFindFormByTelephoneRedirectsOutOfBoundsPageToFirstPage() throws Exception {
+		when(this.owners.findByTelephoneStartingWith(eq("608"), any(Pageable.class)))
+			.thenReturn(new PageImpl<>(List.of(george())));
+		mockMvc.perform(get("/owners").param("page", "2").param("searchType", "telephone").param("telephone", "608"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(redirectedUrl("/owners?page=1&searchType=telephone&telephone=608"));
 	}
 
 	@Test

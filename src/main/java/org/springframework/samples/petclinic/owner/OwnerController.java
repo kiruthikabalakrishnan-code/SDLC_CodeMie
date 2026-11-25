@@ -92,8 +92,13 @@ class OwnerController {
 	}
 
 	@GetMapping("/owners")
-	public String processFindForm(@RequestParam(defaultValue = "1") int page, Owner owner, BindingResult result,
-			Model model, RedirectAttributes redirectAttributes) {
+	public String processFindForm(@RequestParam(defaultValue = "1") int page,
+			@RequestParam(defaultValue = "lastName") String searchType, Owner owner, BindingResult result, Model model,
+			RedirectAttributes redirectAttributes) {
+		if ("telephone".equals(searchType)) {
+			return processTelephoneSearch(page, owner, result, model, redirectAttributes);
+		}
+
 		// allow parameterless GET request for /owners to return all records
 		String lastName = owner.getLastName();
 		if (lastName == null) {
@@ -129,7 +134,43 @@ class OwnerController {
 		return addPaginationModel(page, model, ownersResults);
 	}
 
+	private String processTelephoneSearch(int page, Owner owner, BindingResult result, Model model,
+			RedirectAttributes redirectAttributes) {
+		String telephone = owner.getTelephone() == null ? "" : owner.getTelephone().strip();
+		if (telephone.isEmpty()) {
+			result.rejectValue("telephone", "required", "is required");
+			return "owners/findOwners";
+		}
+		if (!telephone.chars().allMatch(Character::isDigit)) {
+			result.rejectValue("telephone", "nonNumeric", "must be all numeric");
+			return "owners/findOwners";
+		}
+
+		Pageable pageable = PageRequest.of(Math.max(page, 1) - 1, 5);
+		Page<Owner> ownersResults = owners.findByTelephoneStartingWith(telephone, pageable);
+		if (page < 1 || page > Math.max(ownersResults.getTotalPages(), 1)) {
+			redirectAttributes.addAttribute("page", 1);
+			redirectAttributes.addAttribute("searchType", "telephone");
+			redirectAttributes.addAttribute("telephone", telephone);
+			return "redirect:/owners";
+		}
+
+		if (ownersResults.isEmpty()) {
+			result.rejectValue("telephone", "notFound", "not found");
+			return "owners/findOwners";
+		}
+
+		if (ownersResults.getTotalElements() == 1) {
+			return "redirect:/owners/" + ownersResults.iterator().next().getId();
+		}
+
+		String view = addPaginationModel(page, model, ownersResults);
+		model.addAttribute("searchParams", "&searchType=telephone&telephone=" + telephone);
+		return view;
+	}
+
 	private String addPaginationModel(int page, Model model, Page<Owner> paginated) {
+		model.addAttribute("searchParams", "");
 		List<Owner> listOwners = paginated.getContent();
 		model.addAttribute("currentPage", page);
 		model.addAttribute("totalPages", paginated.getTotalPages());
