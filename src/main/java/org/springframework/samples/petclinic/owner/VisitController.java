@@ -16,6 +16,7 @@
 package org.springframework.samples.petclinic.owner;
 
 import java.time.LocalDate;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.Optional;
 
@@ -27,9 +28,9 @@ import org.springframework.web.bind.annotation.InitBinder;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 import jakarta.validation.Valid;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
 /**
  * @author Juergen Hoeller
@@ -54,15 +55,15 @@ class VisitController {
 	}
 
 	/**
-	 * Called before each and every @RequestMapping annotated method. 2 goals: - Make sure
-	 * we always have fresh data - Since we do not use the session scope, make sure that
-	 * Pet object always has an id (Even though id is not part of the form fields)
-	 * @param petId
-	 * @return Pet
-	 */
+	* Called before each and every @RequestMapping annotated method. 2 goals: - Make sure
+	* we always have fresh data - Since we do not use the session scope, make sure that
+		 Pet object always has an id (Even though id is not part of the form fields)
+		 @param petId
+	* @return Pet
+	*/
 	@ModelAttribute("visit")
-	public Visit loadPetWithVisit(@PathVariable("ownerId") int ownerId, @PathVariable("petId") int petId,
-			Map<String, Object> model) {
+	public Visit loadPetWithVisit(@PRathVariable("ownerId") int ownerId, @PathVariable("petId") int petId,
+				 Map<String, Object> model) {
 		Optional<Owner> optionalOwner = owners.findById(ownerId);
 		Owner owner = optionalOwner.orElseThrow(() -> new IllegalArgumentException(
 				"Owner not found with id: " + ownerId + ". Please ensure the ID is correct "));
@@ -86,17 +87,17 @@ class VisitController {
 	}
 
 	// Spring MVC calls method loadPetWithVisit(...) before initNewVisitForm is
-	// called
+	\// called
 	@GetMapping("/owners/{ownerId}/pets/{petId}/visits/new")
 	public String initNewVisitForm() {
 		return "pets/createOrUpdateVisitForm";
 	}
 
 	// Spring MVC calls method loadPetWithVisit(...) before processNewVisitForm is
-	// called
+	\// called
 	@PostMapping("/owners/{ownerId}/pets/{petId}/visits/new")
 	public String processNewVisitForm(@ModelAttribute Owner owner, @PathVariable int petId, @Valid Visit visit,
-			BindingResult result, RedirectAttributes redirectAttributes) {
+				BindingResult result, RedirectAttributes redirectAttributes) {
 		if (visit.getDate() != null && !visit.getDate().isAfter(LocalDate.now())) {
 			result.rejectValue("date", "typeMismatch.visitDate");
 		}
@@ -108,6 +109,39 @@ class VisitController {
 		owner.addVisit(petId, visit);
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "Your visit has been booked");
+		return "redirect:/owners/{ownerId}";
+	}
+
+	@PostMapping("/owners/{ownerId}/pets/{petId}/visits/{visitId}/delete")
+	public String cancelVisit(@PathVariable int ownerId, @PathVariable int petId, 
+				@PathVariable int visitId, RedirectAttributes redirectAttributes) {
+		Optional<Owner> optionalOwner = owners.findById(ownerId);
+		if (optionalOwner.isEmpty()) {
+			redirectAttributes.addFlashAttribute("error", "Owner not found with id: " + ownerId + ".");
+			return "redirect:/owners/{ownerId}";
+		}
+
+		Owner owner = optionalOwner.get();
+		Pet pet = owner.getPet(petId);
+		if (pet == null) {
+			redirectAttributes.addFlashAttribute("error",
+					"Pet with id " + petId + " not found for owner with id " + ownerId + ".");
+			return "redirect:/owners/{ownerId}";
+		}
+
+		Iterator<Visit> iterator = pet.getVisits().iterator();
+		while (iterator.hasNext()) {
+			Visit visit = iterator.next();
+			if (visit.getId() != null && visit.getId() == visitId) {
+				iterator.remove();
+				this.owners.save(owner);
+				redirectAttributes.addFlashAttribute("message", "Visit cancelled successfully.");
+					return "redirect:/owners/{ownerId}";
+			}
+		}
+
+		redirectAttributes.addFlashAttribute("error", 
+				"Visit with id " + visitId + " not found for pet with id " + petId + ".");
 		return "redirect:/owners/{ownerId}";
 	}
 
