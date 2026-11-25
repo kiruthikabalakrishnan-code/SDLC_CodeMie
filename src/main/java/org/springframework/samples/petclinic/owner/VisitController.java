@@ -136,8 +136,8 @@ class VisitController {
 				iterator.remove();
 				this.owners.save(owner);
 				redirectAttributes.addFlashAttribute("message", "Visit cancelled successfully.");
-					return "redirect:/owners/{ownerId}";
-			}
+				return "redirect:/owners/{ownerId}";
+				}
 		}
 
 		redirectAttributes.addFlashAttribute("error", 
