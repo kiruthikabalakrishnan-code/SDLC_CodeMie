@@ -69,7 +69,7 @@
             <td th:text="${#temporals.format(visit.date, 'yyyy-MM-dd')}"></td>
             <td th:text="${visit?.description}"></td>
             <td>
-              <form th:action="@{__${owner.id}__/pets/__${pet.id}__/visits/__${visit.id}__/delete}" method="post"
+              <form th:action="@{|/owners/${owner.id}/pets/${pet.id}/visits/${visit.id}/delete|}" method="post"
                 onsubmit="return confirm('Are you sure you want to cancel this visit?');">
                 <button type="submit" class="btn btn-default btn-xs" th:text="#{cancelVisit}">Cancel</button>
               </form>
