@@ -101,7 +101,7 @@ class VisitController {
 			result.rejectValue("date", "typeMismatch.visitDate");
 		}
 
-		// A pet can not have more than one visit on the same date
+		// A pet cannot have more than one visit on the same date
 		if (visit.getDate() != null && !result.hasFieldErrors("date")
 				&& hasDuplicateVisitDate(owner.getPet(petId), visit)) {
 			result.rejectValue("date", "duplicate.visitDate");

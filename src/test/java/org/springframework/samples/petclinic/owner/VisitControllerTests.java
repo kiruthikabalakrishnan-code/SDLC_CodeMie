@@ -141,6 +141,38 @@ class VisitControllerTests {
 	}
 
 	@Test
+	void processNewVisitFormKeepsDateRuleErrorWhenDateIsPastAndAlreadyBooked() throws Exception {
+		LocalDate pastDate = LocalDate.now().minusDays(1);
+		Owner owner = ownerWithExistingVisit(pastDate);
+		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+
+		mockMvc
+			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
+				.param("name", "George")
+				.param("date", pastDate.toString())
+				.param("description", "Visit Description"))
+			.andExpect(model().attributeHasFieldErrors("visit", "date"))
+			.andExpect(model().attributeHasFieldErrorCode("visit", "date", "typeMismatch.visitDate"))
+			.andExpect(status().isOk())
+			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+
+		verify(this.owners, never()).save(any(Owner.class));
+	}
+
+	@Test
+	void processNewVisitFormDoesNotSaveWhenVisitDateIsToday() throws Exception {
+		mockMvc
+			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
+				.param("name", "George")
+				.param("date", LocalDate.now().toString())
+				.param("description", "Visit Description"))
+			.andExpect(model().attributeHasFieldErrorCode("visit", "date", "typeMismatch.visitDate"))
+			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+
+		verify(this.owners, never()).save(any(Owner.class));
+	}
+
+	@Test
 	void processNewVisitFormSucceedsWhenPetHasVisitOnDifferentDate() throws Exception {
 		Owner owner = ownerWithExistingVisit(LocalDate.now().plusDays(1));
 		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
