@@ -165,12 +165,12 @@ class OwnerController {
 		}
 
 		String view = addPaginationModel(page, model, ownersResults);
-		model.addAttribute("searchParams", "&searchType=telephone&telephone=" + telephone);
+		model.addAttribute("searchType", "telephone");
+		model.addAttribute("searchTelephone", telephone);
 		return view;
 	}
 
 	private String addPaginationModel(int page, Model model, Page<Owner> paginated) {
-		model.addAttribute("searchParams", "");
 		List<Owner> listOwners = paginated.getContent();
 		model.addAttribute("currentPage", page);
 		model.addAttribute("totalPages", paginated.getTotalPages());

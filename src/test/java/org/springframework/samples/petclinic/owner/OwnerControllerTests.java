@@ -250,7 +250,8 @@ class OwnerControllerTests {
 			.thenReturn(new PageImpl<>(List.of(george(), new Owner())));
 		mockMvc.perform(get("/owners").param("searchType", "telephone").param("telephone", " 608 "))
 			.andExpect(status().isOk())
-			.andExpect(model().attribute("searchParams", "&searchType=telephone&telephone=608"))
+			.andExpect(model().attribute("searchType", "telephone"))
+			.andExpect(model().attribute("searchTelephone", "608"))
 			.andExpect(view().name("owners/ownersList"));
 	}
 
