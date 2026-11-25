@@ -101,6 +101,12 @@ class VisitController {
 			result.rejectValue("date", "typeMismatch.visitDate");
 		}
 
+		// A pet cannot have more than one visit on the same date
+		if (visit.getDate() != null && !result.hasFieldErrors("date")
+				&& hasDuplicateVisitDate(owner.getPet(petId), visit)) {
+			result.rejectValue("date", "duplicate.visitDate");
+		}
+
 		if (result.hasErrors()) {
 			return "pets/createOrUpdateVisitForm";
 		}
@@ -109,6 +115,21 @@ class VisitController {
 		this.owners.save(owner);
 		redirectAttributes.addFlashAttribute("message", "Your visit has been booked");
 		return "redirect:/owners/{ownerId}";
+	}
+
+	/**
+	 * Checks whether the given pet already has another visit on the date of the given
+	 * visit. The in-flight visit itself (already added to the pet by
+	 * {@link #loadPetWithVisit}) is excluded from the comparison.
+	 */
+	private boolean hasDuplicateVisitDate(Pet pet, Visit currentVisit) {
+		if (pet == null || currentVisit.getDate() == null) {
+			return false;
+		}
+		return pet.getVisits()
+			.stream()
+			.filter(existing -> existing != currentVisit)
+			.anyMatch(existing -> currentVisit.getDate().equals(existing.getDate()));
 	}
 
 }

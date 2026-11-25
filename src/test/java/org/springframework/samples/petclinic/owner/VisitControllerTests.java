@@ -16,7 +16,10 @@
 
 package org.springframework.samples.petclinic.owner;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.model;
@@ -116,6 +119,105 @@ class VisitControllerTests {
 			.andExpect(model().attributeHasFieldErrors("visit", "description"))
 			.andExpect(status().isOk())
 			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+	}
+
+	@Test
+	void processNewVisitFormHasErrorsWhenPetAlreadyHasVisitOnSameDate() throws Exception {
+		LocalDate visitDate = LocalDate.now().plusDays(1);
+		Owner owner = ownerWithExistingVisit(visitDate);
+		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+
+		mockMvc
+			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
+				.param("name", "George")
+				.param("date", visitDate.toString())
+				.param("description", "Visit Description"))
+			.andExpect(model().attributeHasFieldErrors("visit", "date"))
+			.andExpect(model().attributeHasFieldErrorCode("visit", "date", "duplicate.visitDate"))
+			.andExpect(status().isOk())
+			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+
+		verify(this.owners, never()).save(any(Owner.class));
+	}
+
+	@Test
+	void processNewVisitFormKeepsDateRuleErrorWhenDateIsPastAndAlreadyBooked() throws Exception {
+		LocalDate pastDate = LocalDate.now().minusDays(1);
+		Owner owner = ownerWithExistingVisit(pastDate);
+		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+
+		mockMvc
+			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
+				.param("name", "George")
+				.param("date", pastDate.toString())
+				.param("description", "Visit Description"))
+			.andExpect(model().attributeHasFieldErrors("visit", "date"))
+			.andExpect(model().attributeHasFieldErrorCode("visit", "date", "typeMismatch.visitDate"))
+			.andExpect(status().isOk())
+			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+
+		verify(this.owners, never()).save(any(Owner.class));
+	}
+
+	@Test
+	void processNewVisitFormDoesNotSaveWhenVisitDateIsToday() throws Exception {
+		mockMvc
+			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
+				.param("name", "George")
+				.param("date", LocalDate.now().toString())
+				.param("description", "Visit Description"))
+			.andExpect(model().attributeHasFieldErrorCode("visit", "date", "typeMismatch.visitDate"))
+			.andExpect(view().name("pets/createOrUpdateVisitForm"));
+
+		verify(this.owners, never()).save(any(Owner.class));
+	}
+
+	@Test
+	void processNewVisitFormSucceedsWhenPetHasVisitOnDifferentDate() throws Exception {
+		Owner owner = ownerWithExistingVisit(LocalDate.now().plusDays(1));
+		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+
+		mockMvc
+			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID)
+				.param("name", "George")
+				.param("date", LocalDate.now().plusDays(2).toString())
+				.param("description", "Visit Description"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(view().name("redirect:/owners/{ownerId}"));
+
+		verify(this.owners).save(owner);
+	}
+
+	@Test
+	void processNewVisitFormSucceedsWhenOtherPetHasVisitOnSameDate() throws Exception {
+		LocalDate visitDate = LocalDate.now().plusDays(1);
+		Owner owner = ownerWithExistingVisit(visitDate);
+		Pet otherPet = new Pet();
+		otherPet.setId(TEST_PET_ID + 1);
+		owner.addPet(otherPet);
+		given(this.owners.findById(TEST_OWNER_ID)).willReturn(Optional.of(owner));
+
+		mockMvc
+			.perform(post("/owners/{ownerId}/pets/{petId}/visits/new", TEST_OWNER_ID, TEST_PET_ID + 1)
+				.param("name", "George")
+				.param("date", visitDate.toString())
+				.param("description", "Visit Description"))
+			.andExpect(status().is3xxRedirection())
+			.andExpect(view().name("redirect:/owners/{ownerId}"));
+
+		verify(this.owners).save(owner);
+	}
+
+	private Owner ownerWithExistingVisit(LocalDate visitDate) {
+		Owner owner = new Owner();
+		Pet pet = new Pet();
+		pet.setId(TEST_PET_ID);
+		owner.addPet(pet);
+		Visit existingVisit = new Visit();
+		existingVisit.setDate(visitDate);
+		existingVisit.setDescription("Existing visit");
+		pet.addVisit(existingVisit);
+		return owner;
 	}
 
 }
